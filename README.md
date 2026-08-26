@@ -30,6 +30,10 @@ jpeg = pyjpegli.encode(rgb_bytes, width, height, quality=75)
 rgb, width, height = pyjpegli.decode(jpeg)
 ```
 
+`decode` raises `RuntimeError` on corrupt or truncated data, and refuses
+images over `max_pixels` (default ~179 M, same as Pillow; pass
+`max_pixels=None` to disable the ceiling).
+
 `encode` accepts anything supporting the buffer protocol — `bytes`,
 `bytearray`, `memoryview`, or a C-contiguous `uint8` NumPy array. NumPy is not
 a dependency.
@@ -80,5 +84,5 @@ pip install -e ".[test]" && pytest
 ## License
 
 BSD-3-Clause (see [LICENSE](LICENSE)). Bundled jpegli and its dependencies
-(highway, skcms, libjpeg-turbo headers) are BSD-style licensed; see
-`third_party/jpegli/LICENSE`.
+(highway, skcms, libjpeg-turbo headers) are BSD-style licensed; their license
+texts ship inside every wheel (`pyjpegli-*.dist-info/licenses/`).

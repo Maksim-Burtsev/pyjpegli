@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 #include "lib/jpegli/decode.h"
 #include "lib/jpegli/encode.h"
@@ -67,8 +68,8 @@ bool EncodeRaw(const unsigned char* pixels, int width, int height, int quality,
 }
 
 bool DecodeRaw(const unsigned char* data, unsigned long size,
-               unsigned char** out, size_t* out_size, int* width, int* height,
-               char* msg) {
+               size_t max_pixels, unsigned char** out, size_t* out_size,
+               int* width, int* height, char* msg) {
   jpeg_decompress_struct cinfo;
   ErrorMgr err;
   *out = nullptr;
@@ -89,7 +90,15 @@ bool DecodeRaw(const unsigned char* data, unsigned long size,
   jpegli_start_decompress(&cinfo);
   *width = static_cast<int>(cinfo.output_width);
   *height = static_cast<int>(cinfo.output_height);
-  *out_size = static_cast<size_t>(*width) * static_cast<size_t>(*height) * 3;
+  const size_t pixels =
+      static_cast<size_t>(*width) * static_cast<size_t>(*height);
+  if (max_pixels != 0 && pixels > max_pixels) {
+    snprintf(msg, JMSG_LENGTH_MAX, "image with %dx%d pixels exceeds max_pixels=%zu",
+             *width, *height, max_pixels);
+    jpegli_destroy_decompress(&cinfo);
+    return false;
+  }
+  *out_size = pixels * 3;
   *out = static_cast<unsigned char*>(malloc(*out_size));
   if (*out == nullptr) {
     snprintf(msg, JMSG_LENGTH_MAX, "out of memory");
@@ -107,6 +116,14 @@ bool DecodeRaw(const unsigned char* data, unsigned long size,
       return false;
     }
   }
+  if (err.base.num_warnings > 0) {
+    snprintf(msg, JMSG_LENGTH_MAX, "corrupt JPEG data (%ld decode warnings)",
+             err.base.num_warnings);
+    jpegli_destroy_decompress(&cinfo);
+    free(*out);
+    *out = nullptr;
+    return false;
+  }
   jpegli_finish_decompress(&cinfo);
   jpegli_destroy_decompress(&cinfo);
   return true;
@@ -114,8 +131,10 @@ bool DecodeRaw(const unsigned char* data, unsigned long size,
 
 // Rejects non-uint8 or strided buffers; we index the memory linearly.
 size_t FlatBytes(const py::buffer_info& info) {
-  if (info.itemsize != 1) {
-    throw py::value_error("expected a buffer of 8-bit values");
+  if (info.itemsize != 1 ||
+      (!info.format.empty() && info.format != "B" && info.format != "c")) {
+    throw py::value_error("expected a buffer of unsigned 8-bit values, got '" +
+                          info.format + "'");
   }
   size_t expected = 1;
   for (ssize_t i = info.ndim - 1; i >= 0; --i) {
@@ -158,7 +177,7 @@ py::bytes Encode(py::buffer data, int width, int height, int quality) {
   return py::bytes(reinterpret_cast<const char*>(out), out_size);
 }
 
-py::tuple Decode(py::buffer data) {
+py::tuple Decode(py::buffer data, std::optional<size_t> max_pixels) {
   py::buffer_info info = data.request();
   const size_t size = FlatBytes(info);
 
@@ -170,8 +189,8 @@ py::tuple Decode(py::buffer data) {
   {
     py::gil_scoped_release release;
     ok = DecodeRaw(static_cast<const unsigned char*>(info.ptr),
-                   static_cast<unsigned long>(size), &out, &out_size, &width,
-                   &height, msg);
+                   static_cast<unsigned long>(size), max_pixels.value_or(0),
+                   &out, &out_size, &width, &height, msg);
   }
   std::unique_ptr<unsigned char, void (*)(void*)> owner(out, free);
   if (!ok) throw std::runtime_error(msg);
@@ -189,6 +208,9 @@ PYBIND11_MODULE(pyjpegli, m) {
         py::arg("quality") = 75,
         "Encode packed RGB bytes (width*height*3) into a JPEG.");
 
+  // Same default ceiling as Pillow's MAX_IMAGE_PIXELS; None disables it.
   m.def("decode", &Decode, py::arg("data"),
-        "Decode a JPEG into (rgb_bytes, width, height).");
+        py::arg("max_pixels") = std::optional<size_t>(178956970),
+        "Decode a JPEG into (rgb_bytes, width, height). Rejects corrupt data "
+        "and images larger than max_pixels (None = unlimited).");
 }

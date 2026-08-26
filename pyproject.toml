@@ -32,6 +32,14 @@ minimum-version = "0.10"
 cmake.version = ">=3.24,<4"
 build-dir = "build/{wheel_tag}"
 wheel.packages = []
+# The wheel statically links these; BSD requires their notices in binary distributions.
+wheel.license-files = [
+  "LICENSE",
+  "third_party/jpegli/LICENSE",
+  "third_party/jpegli/third_party/highway/LICENSE",
+  "third_party/jpegli/third_party/skcms/LICENSE",
+  "third_party/jpegli/third_party/libjpeg-turbo/LICENSE.md",
+]
 
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
