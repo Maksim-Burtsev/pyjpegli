@@ -7,6 +7,7 @@
 
 #include <pybind11/pybind11.h>
 
+#include "lib/jpegli/decode.h"
 #include "lib/jpegli/encode.h"
 
 #define STRINGIFY(x) #x
@@ -65,6 +66,52 @@ bool EncodeRaw(const unsigned char* pixels, int width, int height, int quality,
   return true;
 }
 
+bool DecodeRaw(const unsigned char* data, unsigned long size,
+               unsigned char** out, size_t* out_size, int* width, int* height,
+               char* msg) {
+  jpeg_decompress_struct cinfo;
+  ErrorMgr err;
+  *out = nullptr;
+  *out_size = 0;
+  cinfo.err = jpegli_std_error(&err.base);
+  err.base.error_exit = ErrorExit;
+  if (setjmp(err.env)) {
+    memcpy(msg, err.msg, JMSG_LENGTH_MAX);
+    jpegli_destroy_decompress(&cinfo);
+    free(*out);
+    *out = nullptr;
+    return false;
+  }
+  jpegli_create_decompress(&cinfo);
+  jpegli_mem_src(&cinfo, data, size);
+  jpegli_read_header(&cinfo, TRUE);
+  cinfo.out_color_space = JCS_RGB;
+  jpegli_start_decompress(&cinfo);
+  *width = static_cast<int>(cinfo.output_width);
+  *height = static_cast<int>(cinfo.output_height);
+  *out_size = static_cast<size_t>(*width) * static_cast<size_t>(*height) * 3;
+  *out = static_cast<unsigned char*>(malloc(*out_size));
+  if (*out == nullptr) {
+    snprintf(msg, JMSG_LENGTH_MAX, "out of memory");
+    jpegli_destroy_decompress(&cinfo);
+    return false;
+  }
+  const size_t stride = static_cast<size_t>(*width) * 3;
+  while (cinfo.output_scanline < cinfo.output_height) {
+    JSAMPROW row = *out + cinfo.output_scanline * stride;
+    if (jpegli_read_scanlines(&cinfo, &row, 1) != 1) {
+      snprintf(msg, JMSG_LENGTH_MAX, "truncated JPEG data");
+      jpegli_destroy_decompress(&cinfo);
+      free(*out);
+      *out = nullptr;
+      return false;
+    }
+  }
+  jpegli_finish_decompress(&cinfo);
+  jpegli_destroy_decompress(&cinfo);
+  return true;
+}
+
 // Rejects non-uint8 or strided buffers; we index the memory linearly.
 size_t FlatBytes(const py::buffer_info& info) {
   if (info.itemsize != 1) {
@@ -111,6 +158,27 @@ py::bytes Encode(py::buffer data, int width, int height, int quality) {
   return py::bytes(reinterpret_cast<const char*>(out), out_size);
 }
 
+py::tuple Decode(py::buffer data) {
+  py::buffer_info info = data.request();
+  const size_t size = FlatBytes(info);
+
+  unsigned char* out = nullptr;
+  size_t out_size = 0;
+  int width = 0, height = 0;
+  char msg[JMSG_LENGTH_MAX] = {0};
+  bool ok;
+  {
+    py::gil_scoped_release release;
+    ok = DecodeRaw(static_cast<const unsigned char*>(info.ptr),
+                   static_cast<unsigned long>(size), &out, &out_size, &width,
+                   &height, msg);
+  }
+  std::unique_ptr<unsigned char, void (*)(void*)> owner(out, free);
+  if (!ok) throw std::runtime_error(msg);
+  return py::make_tuple(py::bytes(reinterpret_cast<const char*>(out), out_size),
+                        width, height);
+}
+
 }  // namespace
 
 PYBIND11_MODULE(pyjpegli, m) {
@@ -120,4 +188,7 @@ PYBIND11_MODULE(pyjpegli, m) {
   m.def("encode", &Encode, py::arg("data"), py::arg("width"), py::arg("height"),
         py::arg("quality") = 75,
         "Encode packed RGB bytes (width*height*3) into a JPEG.");
+
+  m.def("decode", &Decode, py::arg("data"),
+        "Decode a JPEG into (rgb_bytes, width, height).");
 }
