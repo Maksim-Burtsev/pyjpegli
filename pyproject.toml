@@ -1,0 +1,47 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pyjpegli"
+version = "0.1.0"
+description = "Python bindings for google/jpegli: smaller JPEGs at the same quality"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "BSD-3-Clause" }
+authors = [{ name = "Maksim Burtsev", email = "mburtsev17@gmail.com" }]
+keywords = ["jpeg", "jpegli", "image", "codec", "compression", "encoder"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: C++",
+  "Programming Language :: Python :: 3",
+  "Topic :: Multimedia :: Graphics",
+]
+
+[project.urls]
+Homepage = "https://github.com/Maksim-Burtsev/pyjpegli"
+Issues = "https://github.com/Maksim-Burtsev/pyjpegli/issues"
+
+[project.optional-dependencies]
+test = ["pytest", "pillow", "numpy"]
+
+[tool.scikit-build]
+minimum-version = "0.10"
+cmake.version = ">=3.24,<4"
+build-dir = "build/{wheel_tag}"
+wheel.packages = []
+
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+skip = "*-musllinux_* pp*"
+build-verbosity = 1
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+test-requires = ["pytest", "pillow", "numpy"]
+test-command = "pytest {project}/tests"
+test-skip = "*-macosx_x86_64"
+
+[tool.cibuildwheel.macos.environment]
+MACOSX_DEPLOYMENT_TARGET = "10.15"
