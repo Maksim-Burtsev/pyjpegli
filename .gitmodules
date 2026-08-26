@@ -1,0 +1,3 @@
+[submodule "third_party/jpegli"]
+	path = third_party/jpegli
+	url = https://github.com/google/jpegli
