@@ -35,7 +35,7 @@ jobs:
           git -C third_party/jpegli submodule update --init --depth 1 \
             third_party/highway third_party/skcms third_party/libjpeg-turbo
 
-      - uses: pypa/cibuildwheel@v2.21.3
+      - uses: pypa/cibuildwheel@v4.2.0
         env:
           CIBW_ARCHS: ${{ matrix.arch }}
 
