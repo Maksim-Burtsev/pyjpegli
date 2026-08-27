@@ -35,3 +35,4 @@ target_include_directories(pyjpegli PRIVATE "${JPEGLI_DIR}")
 target_compile_definitions(pyjpegli PRIVATE VERSION_INFO=${SKBUILD_PROJECT_VERSION})
 
 install(TARGETS pyjpegli DESTINATION .)
+install(FILES src/pyjpegli.pyi DESTINATION .)
