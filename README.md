@@ -15,7 +15,7 @@ visual quality, while staying 100% compatible with every JPEG decoder.
 pip install pyjpegli
 ```
 
-Wheels: Linux (x86_64, aarch64) and macOS (arm64, x86_64), CPython 3.9–3.13.
+Wheels: Linux (x86_64, aarch64) and macOS (arm64, x86_64), CPython 3.9–3.14.
 No system dependencies — jpegli is compiled into the wheel.
 
 ## Usage
