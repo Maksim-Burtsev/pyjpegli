@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 
 #include <pybind11/pybind11.h>
@@ -137,8 +138,9 @@ size_t FlatBytes(const py::buffer_info& info) {
                           info.format + "'");
   }
   size_t expected = 1;
-  for (ssize_t i = info.ndim - 1; i >= 0; --i) {
-    if (info.strides[i] != static_cast<ssize_t>(expected)) {
+  // py::ssize_t, not ssize_t: MSVC has no POSIX ssize_t.
+  for (py::ssize_t i = info.ndim - 1; i >= 0; --i) {
+    if (info.strides[i] != static_cast<py::ssize_t>(expected)) {
       throw py::value_error("expected a C-contiguous buffer");
     }
     expected *= static_cast<size_t>(info.shape[i]);
