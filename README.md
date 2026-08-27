@@ -65,10 +65,10 @@ own images before trusting any numbers — the gain depends heavily on content.
 
 ## Limitations
 
-Deliberately minimal for 0.1: RGB only (no grayscale/CMYK), no control over
+Deliberately minimal for now: RGB only (no grayscale/CMYK), no control over
 subsampling, progressive mode, or jpegli's distance-based quality. No Windows
-wheels and no sdist yet (the sdist would not include the vendored submodules).
-Open an issue if you need any of these.
+wheels, no free-threaded (`cp314t`) wheels, and no sdist yet (the sdist would
+not include the vendored submodules). Open an issue if you need any of these.
 
 ## Contributing
 
