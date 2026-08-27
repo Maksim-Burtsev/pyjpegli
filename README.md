@@ -52,16 +52,18 @@ open("photo.jpg", "wb").write(pyjpegli.encode(img, w, h, quality=75))
 
 ## Why
 
-Same input, same quality setting, encoded size (from the test suite's gradient
-image, `quality=75`):
+Real photos (Kodak corpus, 24 images), visual quality matched by
+[SSIMULACRA2](https://github.com/cloudinary/ssimulacra2), both codecs decoded
+by Pillow:
 
-| Encoder | Size |
-|---|---|
-| Pillow / libjpeg-turbo | 3873 B |
-| pyjpegli | 2980 B (−23%) |
+![Same visual quality, fewer bits](benchmarks/quality_size.svg)
 
-Real-world photographic images typically shrink by 10–35%. Reproduce with your
-own images before trusting any numbers — the gain depends heavily on content.
+- **10–13% smaller files at identical visual quality** (median, across all
+  quality levels)
+- 15–17% smaller at the same `quality` setting
+- 1.6× slower to encode than libjpeg-turbo (3.3 vs 2.1 ms/megapixel)
+
+Methodology and full tables: [benchmarks/results.md](benchmarks/results.md).
 
 ## Limitations
 
