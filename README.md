@@ -56,7 +56,13 @@ Real photos (Kodak corpus, 24 images), visual quality matched by
 [SSIMULACRA2](https://github.com/cloudinary/ssimulacra2), both codecs decoded
 by Pillow:
 
-![Same visual quality, fewer bits](https://raw.githubusercontent.com/Maksim-Burtsev/pyjpegli/master/benchmarks/quality_size.svg)
+![Same visual quality, fewer bits](https://raw.githubusercontent.com/Maksim-Burtsev/pyjpegli/713bab1/benchmarks/quality_size.svg)
+
+| jpegli `quality` | visual quality (SSIMULACRA2) | size at equal visual quality |
+|---|---|---|
+| 75 | 72.5 | **−11.4%** |
+| 85 | 78.9 | **−13.1%** |
+| 95 | 88.2 | **−15.2%** |
 
 - **9–15% smaller files at identical visual quality** (median per quality
   level, SSIMULACRA2-matched, ties resolved in libjpeg-turbo's favor)
