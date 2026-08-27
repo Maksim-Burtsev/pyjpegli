@@ -15,8 +15,9 @@ visual quality, while staying 100% compatible with every JPEG decoder.
 pip install pyjpegli
 ```
 
-Wheels: Linux (x86_64, aarch64) and macOS (arm64, x86_64), CPython 3.9–3.14.
-No system dependencies — jpegli is compiled into the wheel.
+Wheels: Linux (x86_64, aarch64), macOS (arm64, x86_64) and Windows (AMD64),
+CPython 3.9–3.14. No system dependencies — jpegli is compiled into the wheel.
+An sdist is published too; building from it needs CMake and a C++17 compiler.
 
 ## Usage
 
@@ -74,9 +75,9 @@ Methodology and full tables: [benchmarks/results.md](benchmarks/results.md).
 ## Limitations
 
 Deliberately minimal for now: RGB only (no grayscale/CMYK), no control over
-subsampling, progressive mode, or jpegli's distance-based quality. No Windows
-wheels, no free-threaded (`cp314t`) wheels, and no sdist yet (the sdist would
-not include the vendored submodules). Open an issue if you need any of these.
+subsampling, progressive mode, or jpegli's distance-based quality. No
+free-threaded (`cp314t`), musllinux or PyPy wheels. Open an issue if you need
+any of these.
 
 ## Contributing
 
