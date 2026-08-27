@@ -24,6 +24,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Topic :: Multimedia :: Graphics",
+  "Typing :: Typed",
 ]
 
 [project.urls]
@@ -46,6 +47,19 @@ wheel.license-files = [
   "third_party/jpegli/third_party/highway/LICENSE",
   "third_party/jpegli/third_party/skcms/LICENSE",
   "third_party/jpegli/third_party/libjpeg-turbo/LICENSE.md",
+]
+
+# The sdist vendors the jpegli submodule; drop its test data, docs and bindings.
+[tool.scikit-build.sdist]
+exclude = [
+  "third_party/jpegli/third_party/skcms/profiles",
+  "third_party/jpegli/third_party/highway/g3doc",
+  "third_party/jpegli/third_party/libjpeg-turbo/testimages",
+  "third_party/jpegli/third_party/libjpeg-turbo/doc",
+  "third_party/jpegli/third_party/libjpeg-turbo/java",
+  "third_party/jpegli/doc",
+  "third_party/jpegli/debian",
+  "benchmarks",
 ]
 
 [tool.cibuildwheel]
