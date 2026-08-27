@@ -68,7 +68,7 @@ by Pillow:
 - **9–15% smaller files at identical visual quality** (median per quality
   level, SSIMULACRA2-matched, ties resolved in libjpeg-turbo's favor)
 - 10–17% smaller at the same `quality` setting
-- 2.1× slower to encode than libjpeg-turbo (3.2 vs 1.5 ms/megapixel)
+- 2.2× slower to encode than libjpeg-turbo (3.2 vs 1.5 ms/megapixel)
 
 Methodology and full tables: [benchmarks/results.md](benchmarks/results.md).
 
