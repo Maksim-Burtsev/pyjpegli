@@ -10,7 +10,6 @@ Usage: python benchmarks/bench.py [--corpus DIR] [--ssimulacra2 PATH] [--out DIR
 import argparse
 import concurrent.futures
 import datetime
-import hashlib
 import io
 import shutil
 import statistics
@@ -27,7 +26,6 @@ import pyjpegli
 
 KODAK = [f"https://r0k.us/graphics/kodak/kodak/kodim{i:02d}.png" for i in range(1, 25)]
 QUALITIES = [60, 70, 75, 80, 85, 90, 95]
-BISECT_TOL = 0.25
 
 
 def load_corpus(corpus_dir: str | None) -> list[tuple[str, Path, np.ndarray]]:
@@ -40,7 +38,10 @@ def load_corpus(corpus_dir: str | None) -> list[tuple[str, Path, np.ndarray]]:
             dst = cache / url.rsplit("/", 1)[1]
             if not dst.exists():
                 print(f"downloading {dst.name}...")
-                urllib.request.urlretrieve(url, dst)
+                part = dst.with_suffix(".part")
+                with urllib.request.urlopen(url, timeout=60) as r:
+                    part.write_bytes(r.read())
+                part.rename(dst)  # atomic: an interrupted download never counts
         paths = sorted(cache.glob("kodim*.png"))
     return [(p.name, p, np.asarray(Image.open(p).convert("RGB"))) for p in paths]
 
@@ -88,8 +89,6 @@ def turbo_match(metric: Metric, name: str, orig_png: Path, img: np.ndarray,
         q = (lo + hi) // 2
         jpg = turbo_bytes(img, q)
         s = metric.score(name, orig_png, "turbo", q, jpg)
-        if abs(s - target) <= BISECT_TOL:
-            return jpg
         if s < target:
             lo = q + 1
         else:
@@ -98,14 +97,25 @@ def turbo_match(metric: Metric, name: str, orig_png: Path, img: np.ndarray,
     return best
 
 
-def encode_speed_ms_per_mp(fn, img: np.ndarray, q: int = 75, repeats: int = 3) -> float:
-    mp = img.shape[0] * img.shape[1] / 1e6
+def encode_speed_ms_per_mp(fn, prepared, mp: float, repeats: int = 3) -> float:
+    """Times fn(prepared) only — input conversion happens outside the clock."""
     times = []
     for _ in range(repeats):
         t0 = time.perf_counter()
-        fn(img, q)
+        fn(prepared)
         times.append(time.perf_counter() - t0)
     return min(times) * 1000 / mp
+
+
+def _turbo_q75(im: "Image.Image") -> bytes:
+    buf = io.BytesIO()
+    im.save(buf, format="JPEG", quality=75)
+    return buf.getvalue()
+
+
+def _jpegli_q75(a: np.ndarray) -> bytes:
+    h, w, _ = a.shape
+    return pyjpegli.encode(a, w, h, quality=75)
 
 
 def main() -> None:
@@ -136,9 +146,15 @@ def main() -> None:
         mode_a.append((q, statistics.mean(t_sizes), statistics.mean(j_sizes)))
         print(f"mode A q={q}: turbo {mode_a[-1][1]:.0f} B, jpegli {mode_a[-1][2]:.0f} B")
 
-    # Speed at q=75.
-    t_speed = statistics.median(encode_speed_ms_per_mp(turbo_bytes, img) for _, _, img in corpus)
-    j_speed = statistics.median(encode_speed_ms_per_mp(jpegli_bytes, img) for _, _, img in corpus)
+    # Speed at q=75; both inputs prepared outside the timed region.
+    t_speed = statistics.median(
+        encode_speed_ms_per_mp(_turbo_q75, Image.fromarray(img),
+                               img.shape[0] * img.shape[1] / 1e6)
+        for _, _, img in corpus)
+    j_speed = statistics.median(
+        encode_speed_ms_per_mp(_jpegli_q75, np.ascontiguousarray(img),
+                               img.shape[0] * img.shape[1] / 1e6)
+        for _, _, img in corpus)
     print(f"speed: turbo {t_speed:.1f} ms/MP, jpegli {j_speed:.1f} ms/MP")
 
     # Mode B: equal visual quality.
@@ -149,33 +165,44 @@ def main() -> None:
     else:
         with tempfile.TemporaryDirectory() as td:
             metric = Metric(args.ssimulacra2, Path(td))
+            # Metric reference = the same RGB array the encoders saw, so a
+            # 16-bit/alpha/ICC original in --corpus doesn't bias the score.
+            refs = {}
+            for name, _, img in corpus:
+                refs[name] = Path(td) / f"ref-{name}.png"
+                Image.fromarray(img).save(refs[name])
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
                 for q in QUALITIES:
                     def one(item, q=q):
-                        name, orig_png, img = item
+                        name, _, img = item
                         j = jpgs[(name, q)]
-                        target = metric.score(name, orig_png, "jpegli", q, j)
-                        t = turbo_match(metric, name, orig_png, img, target)
+                        target = metric.score(name, refs[name], "jpegli", q, j)
+                        t = turbo_match(metric, name, refs[name], img, target)
                         return target, (1 - len(j) / len(t)) if t else None
                     results = list(pool.map(one, corpus))
                     scores = [s for s, _ in results]
                     savings = [sv for _, sv in results if sv is not None]
                     excluded = sum(1 for _, sv in results if sv is None)
-                    qs = statistics.quantiles(savings, n=4)
-                    mode_b.append((q, statistics.median(scores), statistics.median(savings),
-                                   qs[0], qs[2], excluded))
+                    if len(savings) >= 2:
+                        med = statistics.median(savings)
+                        qs = statistics.quantiles(savings, n=4)
+                        p25, p75 = qs[0], qs[2]
+                    else:  # tiny corpus or (almost) everything excluded
+                        med = p25 = p75 = savings[0] if savings else None
+                    mode_b.append((q, statistics.median(scores), med, p25, p75, excluded))
+                    shown = f"{med:.1%}" if med is not None else "n/a"
                     print(f"mode B q={q}: score {mode_b[-1][1]:.1f}, "
-                          f"median saving {mode_b[-1][2]:.1%} (excl {excluded})")
+                          f"median saving {shown} (excl {excluded})")
                 # Curves for the chart: mean bpp vs mean score per q, both codecs.
                 for q in QUALITIES:
                     for codec, curve in (("jpegli", curves["jpegli"]),
                                          ("turbo", curves["libjpeg-turbo"])):
                         bpps, scs = [], []
-                        for name, orig_png, img in corpus:
+                        for name, _, img in corpus:
                             jpg = (jpgs[(name, q)] if codec == "jpegli"
                                    else turbo_bytes(img, q))
                             bpps.append(len(jpg) * 8 / (img.shape[0] * img.shape[1]))
-                            scs.append(metric.score(name, orig_png, codec, q, jpg))
+                            scs.append(metric.score(name, refs[name], codec, q, jpg))
                         curve.append((statistics.mean(bpps), statistics.mean(scs)))
         plot(curves, out_dir / "quality_size.svg")
 
@@ -241,7 +268,8 @@ def write_report(path: Path, corpus, mode_a, mode_b, t_speed, j_speed, tool) -> 
             "|---|---|---|---|---|---|",
         ]
         for q, sc, med, p25, p75, ex in mode_b:
-            lines.append(f"| {q} | {sc:.1f} | {med:.1%} | {p25:.1%} | {p75:.1%} | {ex} |")
+            fmt = lambda v: f"{v:.1%}" if v is not None else "n/a"
+            lines.append(f"| {q} | {sc:.1f} | {fmt(med)} | {fmt(p25)} | {fmt(p75)} | {ex} |")
         lines += [
             "",
             "Excluded = images where turbo at q=100 still scored below jpegli's "
@@ -254,9 +282,14 @@ def write_report(path: Path, corpus, mode_a, mode_b, t_speed, j_speed, tool) -> 
         f"- libjpeg-turbo: {t_speed:.1f} ms/megapixel",
         f"- jpegli: {j_speed:.1f} ms/megapixel ({j_speed / t_speed:.1f}x slower)",
         "",
-        "Reproduce: `pip install 'pyjpegli[bench]'` (or `pip install -e '.[bench]'`), "
-        "install `ssimulacra2` (ships with Homebrew/apt `jpeg-xl` / `libjxl` tools), "
-        "then `python benchmarks/bench.py`.",
+        "Reproduce (from a clone): init the submodules "
+        "(`git submodule update --init --depth 1 third_party/jpegli && "
+        "git -C third_party/jpegli submodule update --init --depth 1 "
+        "third_party/highway third_party/skcms third_party/libjpeg-turbo`), "
+        "`pip install -e '.[bench]'` (needs CMake and a C++17 toolchain), install "
+        "`ssimulacra2` (ships with Homebrew/apt `jpeg-xl` / `libjxl` tools), then "
+        "`python benchmarks/bench.py`. Note: the run overwrites results.md and "
+        "quality_size.svg in place.",
     ]
     path.write_text("\n".join(lines) + "\n")
 

@@ -22,19 +22,19 @@ For each image and jpegli quality, libjpeg-turbo's quality knob is binary-search
 
 | jpegli q | median SSIMULACRA2 | median savings | p25 | p75 | excluded |
 |---|---|---|---|---|---|
-| 60 | 64.5 | 12.7% | 8.9% | 16.9% | 0 |
-| 70 | 69.8 | 11.7% | 8.3% | 16.9% | 0 |
-| 75 | 72.5 | 10.5% | 7.3% | 15.7% | 0 |
-| 80 | 75.6 | 9.5% | 6.1% | 14.4% | 0 |
-| 85 | 78.9 | 9.6% | 7.8% | 14.8% | 0 |
-| 90 | 83.2 | 12.4% | 7.9% | 15.5% | 0 |
-| 95 | 88.2 | 10.4% | 7.7% | 14.7% | 0 |
+| 60 | 64.5 | 13.3% | 10.0% | 17.5% | 0 |
+| 70 | 69.8 | 12.5% | 8.5% | 17.1% | 0 |
+| 75 | 72.5 | 11.4% | 7.8% | 16.2% | 0 |
+| 80 | 75.6 | 9.5% | 6.6% | 14.9% | 0 |
+| 85 | 78.9 | 13.1% | 8.3% | 15.5% | 0 |
+| 90 | 83.2 | 12.4% | 9.7% | 18.9% | 0 |
+| 95 | 88.2 | 15.2% | 10.2% | 20.9% | 0 |
 
 Excluded = images where turbo at q=100 still scored below jpegli's score (no fair size comparison possible).
 
 ## Encode speed (q=75, median over corpus)
 
-- libjpeg-turbo: 2.1 ms/megapixel
-- jpegli: 3.3 ms/megapixel (1.6x slower)
+- libjpeg-turbo: 1.5 ms/megapixel
+- jpegli: 3.2 ms/megapixel (2.2x slower)
 
-Reproduce: `pip install 'pyjpegli[bench]'` (or `pip install -e '.[bench]'`), install `ssimulacra2` (ships with Homebrew/apt `jpeg-xl` / `libjxl` tools), then `python benchmarks/bench.py`.
+Reproduce (from a clone): init the submodules (`git submodule update --init --depth 1 third_party/jpegli && git -C third_party/jpegli submodule update --init --depth 1 third_party/highway third_party/skcms third_party/libjpeg-turbo`), `pip install -e '.[bench]'` (needs CMake and a C++17 toolchain), install `ssimulacra2` (ships with Homebrew/apt `jpeg-xl` / `libjxl` tools), then `python benchmarks/bench.py`. Note: the run overwrites results.md and quality_size.svg in place.

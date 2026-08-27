@@ -56,12 +56,12 @@ Real photos (Kodak corpus, 24 images), visual quality matched by
 [SSIMULACRA2](https://github.com/cloudinary/ssimulacra2), both codecs decoded
 by Pillow:
 
-![Same visual quality, fewer bits](benchmarks/quality_size.svg)
+![Same visual quality, fewer bits](https://raw.githubusercontent.com/Maksim-Burtsev/pyjpegli/master/benchmarks/quality_size.svg)
 
-- **10–13% smaller files at identical visual quality** (median, across all
-  quality levels)
-- 15–17% smaller at the same `quality` setting
-- 1.6× slower to encode than libjpeg-turbo (3.3 vs 2.1 ms/megapixel)
+- **9–15% smaller files at identical visual quality** (median per quality
+  level, SSIMULACRA2-matched, ties resolved in libjpeg-turbo's favor)
+- 10–17% smaller at the same `quality` setting
+- 2.1× slower to encode than libjpeg-turbo (3.2 vs 1.5 ms/megapixel)
 
 Methodology and full tables: [benchmarks/results.md](benchmarks/results.md).
 
