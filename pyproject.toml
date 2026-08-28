@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pyjpegli"
-version = "0.3.0"
+version = "0.3.1"
 description = "Python bindings for google/jpegli: smaller JPEGs at the same quality"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -12,7 +12,7 @@ license = { text = "BSD-3-Clause" }
 authors = [{ name = "Maksim Burtsev", email = "mburtsev17@gmail.com" }]
 keywords = ["jpeg", "jpegli", "image", "codec", "compression", "encoder", "decoder", "image-compression", "image-optimization", "libjpeg"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: BSD License",
   "Programming Language :: C++",
