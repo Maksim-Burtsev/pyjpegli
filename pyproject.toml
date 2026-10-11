@@ -71,7 +71,6 @@ manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
 test-requires = ["pytest", "pillow", "numpy"]
 test-command = "pytest {project}/tests"
-test-skip = "*-macosx_x86_64"
 
 [tool.cibuildwheel.macos.environment]
 MACOSX_DEPLOYMENT_TARGET = "10.15"
