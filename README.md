@@ -16,7 +16,7 @@ pip install pyjpegli
 ```
 
 Wheels: Linux (x86_64, aarch64), macOS (arm64, x86_64) and Windows (AMD64),
-CPython 3.9–3.14. No system dependencies — jpegli is compiled into the wheel.
+CPython 3.9–3.15. No system dependencies — jpegli is compiled into the wheel.
 An sdist is published too; building from it needs CMake and a C++17 compiler.
 
 ## Usage
